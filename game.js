@@ -2,14 +2,11 @@ var game = new Phaser.Game(1050, 650, Phaser.AUTO, '', { preload: preload, creat
 
 function preload() {
 
-    game.load.image('sky', 'assets/sky.png');
-    game.load.image('ground', 'assets/platform.png');
-    game.load.image('star', 'assets/star.png');
     
     game.load.image('roomba', 'assets/ZeldaRoomba.png');
     game.load.image('roombaShadow', 'assets/ZeldaRoomba_shadow.png');
     game.load.image('roombaShadow2', 'assets/ZeldaRoomba_shadow.png');
-    game.load.image('wall', 'assets/wall.png');
+    game.load.image('speck', 'assets/speck.png');
 
     game.load.image('floor', 'assets/floor.png');
     game.load.audio('bounce', 'assets/bounce.mp3');
@@ -22,9 +19,12 @@ function preload() {
     game.load.image('wall_right', 'assets/wall_right.png');
     game.load.image('wall_bottom', 'assets/wall_bottom.png');
     game.load.image('couch', 'assets/couch.png');
+    game.load.image('couch_shadow', 'assets/couch_shadow.png');
     game.load.image('dirt_01', 'assets/dirt_01.png');
     game.load.image('potted_plant', 'assets/potted_plant.png');
+    game.load.image('potted_plant_shadow', 'assets/potted_plant_shadow.png');
     game.load.image('tv', 'assets/tv.png');
+    game.load.image('tv_shadow', 'assets/tv_shadow.png');
 }
 
 var player;
@@ -56,21 +56,20 @@ var vacAccel;
 var vacMove;
 var vacIdle;
 
+var dirtParticle;
+
 var decodedDict = [];
+
+var emitter;
 
 function create() {
     decodedDict['vac_on'] = false;
     decodedDict['vac_idle'] = false;
-    //  We're going to be using physics, so enable the Arcade Physics system
     
     game.physics.startSystem(Phaser.Physics.ARCADE);
-
-    //  A simple background for our game
-    //game.add.sprite(0, 0, 'sky');
-
-    //  The platforms group contains the ground and the 2 ledges we can jump on
+    
     game.add.sprite(125, 125, 'floor');
-
+    
     dirts = game.add.group();
 
     //  We will enable physics for any star that is created in this group
@@ -87,12 +86,28 @@ function create() {
         //  This just gives each star a slightly random bounce value
         dirt.body.bounce.y = 0.7 + Math.random() * 0.2;
     }
+
+    tvShadow = game.add.sprite(0, 0, 'tv_shadow');
+    tvShadow.alpha = 0.15;
+
+    plant1Shadow = game.add.sprite(0, 0, 'potted_plant_shadow');
+    plant1Shadow.alpha = 0.15;
+    plant2Shadow = game.add.sprite(0, 0, 'potted_plant_shadow');
+    plant2Shadow.alpha = 0.15;
+
+    couchShadow = game.add.sprite(0, 0, 'couch_shadow');
+    couchShadow.alpha = 0.15;
     
     platforms = game.add.group();
 
     //  We will enable physics for any object that is created in this group
     platforms.enableBody = true;
 
+    emitter = game.add.emitter(0, 0, 50);
+    emitter.makeParticles('speck');
+    emitter.gravity = 0;
+
+    
     bounceSound = game.add.audio('bounce');
     bounceSound.onDecoded.add(onSoundDecoded, this);
 
@@ -101,7 +116,7 @@ function create() {
     vacOn.onDecoded.add(function() {decodedDict['vac_on'] = true; onVacSoundDecoded();}, this);
     vacOn.onStop.add(function() {vacIdle.play();}, this);
     
-    
+
     vacIdle = game.add.audio('vac_idle');
     vacIdle.loop = true;
     vacIdle.allowMultiple = false;
@@ -137,13 +152,17 @@ function create() {
     topWall.body.immovable = true;
     
     couch = platforms.create(200, 200, 'couch');
+    couch.shadow_layer = couchShadow;
     couch.body.immovable = true;
 
-    plant = platforms.create(408, 200, 'potted_plant');
-
+    plant1 = platforms.create(408, 200, 'potted_plant');
+    plant1.shadow_layer = plant1Shadow;
     plant2 = platforms.create(558, 200, 'potted_plant');
+    plant2.shadow_layer = plant2Shadow;
 
+    
     tv = platforms.create(200, 400, 'tv');
+    tv.shadow_layer = tvShadow;
     
     // The player and its settings
     startX = game.world.width/2;
@@ -158,7 +177,6 @@ function create() {
     player.anchor = new Phaser.Point(0.5, 0.5);
     //  We need to enable physics on the player
     game.physics.arcade.enable(player);
-    //game.physics.arcade.enable(shadowSprite
 
     //  Player physics properties. Give the little guy a slight bounce.
     player.body.bounce.y = 0.2;
@@ -166,21 +184,10 @@ function create() {
 
     player.body.collideWorldBounds = true;
 
-    
-    
-    //  Our two animations, walking left and right.
-    /*player.animations.add('left', [0, 1, 2, 3], 10, true);
-    player.animations.add('right', [5, 6, 7, 8], 10, true);*/
-
-    //  Finally some dirts to collect
-    
-
-    //  The score
-    //scoreText = game.add.text(16, 16, 'score: 0', { fontSize: '32px', fill: '#000' });
-
     //  Our controls.
     cursors = game.input.keyboard.createCursorKeys();
-    //game.time.events.add(Phaser.Time.SECOND * 8, playShit, this);
+
+    
 }
 
 function onSoundDecoded() {
@@ -200,56 +207,52 @@ function onVacuumMoveStartComplete() {
 
 function update() {
 
-    speed = 200;
+    roombaSpeed = 200;
     //  Collide the player and the dirts with the platforms
     game.physics.arcade.collide(player, platforms);
     game.physics.arcade.collide(dirts, platforms);
     game.physics.arcade.collide(platforms, platforms);
-    //  Checks to see if the player overlaps with any of the dirts, if he does call the collectStar function
-    game.physics.arcade.overlap(player, dirts, collectStar, null, this);
+    //  Checks to see if the player overlaps with any of the dirts, if he does call the collectDirt function
+    game.physics.arcade.overlap(player, dirts, collectDirt, null, this);
 
     //  Reset the players velocity (movement)
-    //player.body.velocity.x = 0;
     if (idleRotation) {
 	shadowSpriteLighter.angle = shadowSprite.angle = player.angle = (player.angle + (rotationDirection == CW ? 2 : -2)) % 360;
 	
     } else {
 
-	player.body.velocity.y = lerp(player.body.velocity.y, Math.sin(player.rotation)*speed, 0.1);
-	player.body.velocity.x = lerp(player.body.velocity.x, Math.cos(player.rotation)*speed, 0.1);
+	player.body.velocity.y = lerp(player.body.velocity.y, Math.sin(player.rotation)*roombaSpeed, 0.1);
+	player.body.velocity.x = lerp(player.body.velocity.x, Math.cos(player.rotation)*roombaSpeed, 0.1);
     }
     
     if (cursors.left.isDown)
     {
-        if (vacIdle.isPlaying){
-	    vacIdle.stop();
+	if (rotationDirection != CCW) {
+            if (vacIdle.isPlaying){
+		vacIdle.stop();
+	    }
+	    vacIdle.play();
+	    rotationDirection = CCW;
 	}
-	vacIdle.play();
-	rotationDirection = CCW;
     }
-    else if (cursors.right.isDown/* && !idleRotation*/)
+    else if (cursors.right.isDown)
     {
-	if (vacIdle.isPlaying){
-	    vacIdle.stop();
+	if (rotationDirection != CW){
+	    if (vacIdle.isPlaying){
+		vacIdle.stop();
+	    }
+	    vacIdle.play();
+	    rotationDirection = CW;
 	}
-	vacIdle.play();
-	rotationDirection = CW;
     }
     
     if (cursors.up.isDown) {
-	idleRotation = false;
-	if (vacOn.isPlaying) {
-	    vacOn.stop();
-	}
-	if (vacIdle.isPlaying){
-	    vacIdle.stop();
-	}
-	if (!vacAccel.isPlaying && !vacMove.isPlaying) {
-	    vacAccel.play();
-	}
+	startMovement();
     }
 
-    //if (!player.body.touching.none) {
+    spaceBar = game.input.keyboard.addKey(Phaser.KeyCode.SPACEBAR);
+    spaceBar.onDown.add(startMovement, this);
+
     if (!player.body.touching.none && !didCollectDirt) {
 	player.body.velocity.x = 0;
 	player.body.velocity.y = 0;
@@ -268,8 +271,11 @@ function update() {
 	if (!vacIdle.isPlaying) {
 	    vacIdle.play();
 	}
-	//idleRotation = true;
+	emitter.x = player.x + Math.cos(player.rotation)*player.width/2;
+	emitter.y = player.y + Math.sin(player.rotation)*player.width/2;
+	emitter.start(true, 500, null, 15);
     }
+    
     if (didCollectDirt) {
 	didCollectDirt = false;
     }
@@ -292,8 +298,13 @@ function update() {
     shadowSpriteLighter.y = player.body.y + player.offsetY + 6;
 
     platforms.forEach(function(sprite) {
+	
 	sprite.body.velocity.x = lerp(sprite.body.velocity.x, 0, 0.1);
 	sprite.body.velocity.y = lerp(sprite.body.velocity.y, 0, 0.1);
+	if (sprite.shadow_layer != undefined) {
+	    sprite.shadow_layer.x = sprite.x;
+	    sprite.shadow_layer.y = sprite.y + 4;
+	}
     });
 }
 
@@ -310,7 +321,7 @@ function markerComplete(key) {
     
 }
 
-function collectStar (player, star) {
+function collectDirt (player, star) {
     
     // Removes the star from the screen
     star.kill();
@@ -323,4 +334,19 @@ function collectStar (player, star) {
 
 function lerp(a, b, pct) {
     return (a + pct*(b - a));
+}
+
+function startMovement() {
+    if (idleRotation) {
+	idleRotation = false;
+	if (vacOn.isPlaying) {
+	    vacOn.stop();
+	}
+	if (vacIdle.isPlaying){
+	    vacIdle.stop();
+	}
+	if (!vacAccel.isPlaying && !vacMove.isPlaying) {
+	    vacAccel.play();
+	}
+    }
 }
