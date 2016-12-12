@@ -27,7 +27,7 @@ function preload() {
     game.load.image('tv_shadow', 'assets/tv_shadow.png');
     game.load.image('dock', 'assets/dock.png');
     game.load.image('dock_shadow', 'assets/dock_shadow.png');
-    game.load.spritesheet('heart', 'assets/heart_sprite.png', 32, 32);
+    game.load.spritesheet('heart', 'assets/heartGreen_sprite.png', 32, 32);
 }
 
 var player;
@@ -168,7 +168,7 @@ function create() {
 
     dock = game.add.group();
     dock.enableBody = true;
-    dockSprite = dock.create(game.world.width - 200, game.world.height/2, 'dock');
+    dockSprite = dock.create(game.world.width - 150, game.world.height/2, 'dock');
     dockSprite.anchor.setTo(0.5, 0.5);
     dockSprite.immovable = true;
     
@@ -329,12 +329,17 @@ function update() {
 	}
     });
 
-    dockRate = 0.1;
+    dockRate = 0.05;
     angleRate = 0.1;
     
     if (docking) {
 	if (dockingState == ARRIVING_AT_DOCK) {
-	    //case ARRIVING_AT_DOCK:
+	    if (vacMove.isPlaying){
+		vacMove.stop();
+	    }
+	    if (vacAccel.isPlaying){
+		vacAccel.stop();
+	    }
 	    player.angle = lerp(player.angle, 0.0, angleRate);
 	    player.centerX = lerp(player.centerX, dockSprite.centerX - 10.0, dockRate);
 	    player.centerY = lerp(player.centerY, dockSprite.centerY, dockRate);
@@ -345,10 +350,10 @@ function update() {
 	    if (Math.abs(player.centerX - (dockSprite.centerX - 10)) <= 40.0 &&
 		Math.abs(player.centerY - dockSprite.centerY) <= 0.05 &&
 		Math.abs(player.angle) < 0.5) {
-		
+		rotationDirection = CW;
 		dockingState = LEAVING_DOCK;
 		console.log("leaving dock");
-	    } else {
+	    } /*else {
 		console.log("playerx diff: "+Math.abs(player.centerX - (dockSprite.centerX - 10)));
 		console.log("playery diff: "+Math.abs(player.centerY - (dockSprite.centerY)));
 		console.log("player.x:" +player.centerX);
@@ -356,7 +361,7 @@ function update() {
 		console.log("dock.x: "+dockSprite.centerX);
 		console.log("dock.y: "+dockSprite.centerY);
 		console.log("player.angle:" +player.angle); 
-	    }
+	    }*/
 	    currentBattery = 100.0;
 	    //break;
 	}
@@ -375,16 +380,16 @@ function update() {
 		    player.body.velocity.x = 0;
 		    player.body.velocity.y = 0;
 		    
-		} else {
+		}/* else {
 		    
 		    console.log("playerx: "+Math.abs(player.x - (dockSprite.x - 60)));
 		    console.log("playery: "+Math.abs(player.y - (dockSprite.y)));
 		    
-		}
-	    } else {
+		}*/
+	    } /*else {
 		console.log("leaving angle: "+Math.abs(player.angle - 180.0));
 		
-	    }
+	    }*/
 	}
 
 	
