@@ -567,11 +567,12 @@ function collectDirt(player, dirt) {
     
     // Removes the star from the screen
     dirt.kill();
-
+    
     //  Add and update the score
     dirtCollected = Math.min(100.0, dirtCollected + 5.0);
     console.log("dirt: "+dirtCollected);
     didCollectDirt = true;
+    dirts.remove(dirt);
 }
 
 function goToDock(player, dock){
