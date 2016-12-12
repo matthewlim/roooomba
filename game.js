@@ -15,6 +15,7 @@ function preload() {
     game.load.audio('vac_accel', 'assets/vac_accel.mp3');
     game.load.audio('vac_move', 'assets/vac_move.mp3');
     game.load.audio('vac_off', 'assets/vac_off.mp3');
+    game.load.audio('dockSound', 'assets/switch.mp3');
     game.load.image('wall_top', 'assets/wall_top.png');
     game.load.image('wall_left', 'assets/wall_left.png');
     game.load.image('wall_right_door', 'assets/wall_right_door.png');
@@ -32,7 +33,8 @@ function preload() {
     game.load.image('dock', 'assets/dock.png');
     game.load.image('dock_shadow', 'assets/dock_shadow.png');
     game.load.spritesheet('heart', 'assets/heartGreen_sprite.png', 32, 32);
-    game.load.spritesheet('dirt_meter', 'assets/dirtmeter_sprite.png', 32, 160);
+    game.load.spritesheet('dirt_meter', 'assets/dirtmeter_sprite_h.png', 32, 160);
+    game.load.image('dirt_meter_glow', 'assets/dirt_meter_glow.png');
     game.load.image('splat_01', 'assets/dirts/spill_red.png');
     game.load.image('splat_02', 'assets/dirts/spill_blue.png');
     game.load.image('splat_03', 'assets/dirts/spill_green.png');
@@ -40,6 +42,10 @@ function preload() {
     game.load.image('red_triangle', 'assets/triangle_glowRed.png');
     game.load.image('yellow_triangle', 'assets/triangle_glowYellow.png');
     game.load.image('reddot', 'assets/reddot.png');
+    game.load.image('start_bubble', 'assets/start_bubble.png');
+    game.load.image('dirt_counter', 'assets/dirt_counter.png');
+    game.load.image('dirt_counter_shine', 'assets/dirt_counter_shine.png');
+    game.load.image('shade', 'assets/speck_black.png');
 }
 
 
@@ -52,13 +58,17 @@ var redLight;
 
 var yellowLight;
 var yellowLightDirection = 1;
+var redLightDirection = 0;
+
+var dirtGlowDirection = 0;
+var dirtGlow;
 
 var cursors;
 
 var dirts;
 var score = 0;
 var scoreText;
-var idleRotation = true;
+var idleRotation = false;
 var didCollectDirt = false;
 var didCollide;
 var CW = 1;
@@ -79,6 +89,8 @@ var vacAccel;
 var vacMove;
 var vacIdle;
 
+var dockSound;
+
 var currentBattery = 100.0;
 
 var dirtParticle;
@@ -87,7 +99,7 @@ var decodedDict = [];
 var hearts = [];
 var emitter;
 var dockSprite;
-var docking = false
+var docking = true;
 
 var ARRIVING_AT_DOCK = 1;
 var LEAVING_DOCK = 2;
@@ -96,6 +108,8 @@ var NOT_DOCKING = 0;
 var dockingState = NOT_DOCKING;
 
 var dirtMeter;
+var dirtCounter;
+var dirtCounterText;
 var dirtCollected = 0.0;
 var dirtDict = ['dirt_01', 'splat_01', 'splat_02', 'splat_03', 'arrows_01'];
 var dirtTimer;
@@ -103,17 +117,29 @@ var didPlayVacOff;
 var deathAngle;
 var redDot;
 var dockTimeout = 0;
+var floor;
+var rug;
+var gameoverTitleText;
+var gameoverRestartText;
+var gameoverText;
 
+var textStyle;
+var totalDirtCleaned = 0;
+var startBubble;
+var shade;
+var gameStarted = false;
+var gameOver = false;
+var animatingRestart = false;
 
 function create() {
     decodedDict['vac_on'] = false;
     decodedDict['vac_idle'] = false;
     
     game.physics.startSystem(Phaser.Physics.ARCADE);
-    game.time.events.loop(Phaser.Timer.SECOND * 2, dropDirt, this);
+    game.time.events.loop(Phaser.Timer.SECOND * 2, dropDirtTimer, this);
     floor = game.add.sprite(125, 125, 'floor');
 
-    game.add.sprite(600, 200, 'rug');
+    rug = game.add.sprite(600, 200, 'rug');
     
     dirts = game.add.group();
     dirts.enableBody = true;
@@ -122,11 +148,8 @@ function create() {
         dropDirt();
     }
     // SHADOWS
-    /*tvShadow = game.add.sprite(0, 0, 'tv_shadow');
-      tvShadow.alpha = 0.15;*/
-    
-    //sideTableShadow.alpha = 0.15;
 
+    
     shadows = game.add.group();
     
     plant1Shadow = shadows.create(0, 0, 'potted_plant_shadow');
@@ -151,7 +174,6 @@ function create() {
     coffeeTableShadow = shadows.create(0, 0, 'coffee_table_shadow');
     coffeeTableShadow.alpha = 0.15;
     coffeeTableShadow.shadow_delta_y = 8;
-    //coffeeTableShadow.name = "coffeetableshadow";
 
     
     sideTableShadow = shadows.create(0, 0, 'side_table_shadow');
@@ -172,14 +194,16 @@ function create() {
     bounceSound.onDecoded.add(onSoundDecoded, this);
     
     vacOn = game.add.audio('vac_on');
-    vacOn.onDecoded.add(function() {decodedDict['vac_on'] = true; onVacSoundDecoded();}, this);
+    vacOn.onDecoded.add(function() {decodedDict['vac_on'] = true;}, this);
     vacOn.onStop.add(function() {vacIdle.play();}, this);
+
+    dockSound = game.add.audio('dockSound');
     
 
     vacIdle = game.add.audio('vac_idle');
     vacIdle.loop = true;
     vacIdle.allowMultiple = false;
-    vacIdle.onDecoded.add(function(){decodedDict['vac_idle'] = true; onVacSoundDecoded();}, this);
+    vacIdle.onDecoded.add(function(){decodedDict['vac_idle'] = true;}, this);
 
     vacAccel = game.add.audio('vac_accel');
     vacAccel.allowMultiple = true;
@@ -199,7 +223,7 @@ function create() {
     vacMove.onDecoded.add(function() {decodedDict['vac_move'] = true;}, this);
 
     vacOff = game.add.audio('vac_off');
-    vacOff.onDecoded.add(function() {decodedDict['vac_off'] = true; onVacSoundDecoded();}, this);
+    vacOff.onDecoded.add(function() {decodedDict['vac_off'] = true;}, this);
     
 
     leftWall = platforms.create(0, 125, 'wall_left');
@@ -207,8 +231,10 @@ function create() {
     
     rightWall = platforms.create(game.world.width - 125, 125, 'wall_right_door');
     rightWall.body.immovable = true;
+    
 
     bottomWall = platforms.create(0, game.world.height -125, 'wall_bottom');
+    
     bottomWall.body.immovable = true;
 
     topWall = platforms.create(0, 0, 'wall_top');
@@ -220,27 +246,37 @@ function create() {
 
     plant3 = platforms.create(200, 400, 'potted_plant');
     plant3.shadow_layer = plant3Shadow;
-
+    plant3.originalPosition = {x: 200, y:400};
+    
     plant1 = platforms.create(600, 200, 'potted_plant');
     plant1.shadow_layer = plant1Shadow;
-    
+    plant1.originalPosition = {x: 600, y:200};
+
     plant2 = platforms.create(750, 200, 'potted_plant');
     plant2.shadow_layer = plant2Shadow;
-
+    plant2.originalPosition = {x: 750, y:200};
     
 
     plant4 = platforms.create(800, 200, 'potted_plant');
     plant4.shadow_layer = plant4Shadow;
-    
+    plant4.originalPosition = {x: 800, y:200};
     /*tv = platforms.create(200, 400, 'tv');
       tv.shadow_layer = tvShadow;*/
     coffeeTable = platforms.create(250, 400, 'coffee_table');
     coffeeTable.shadow_layer = coffeeTableShadow;
-
-    sideTable = platforms.create(406, 200, 'side_table');
-    sideTable.shadow_layer = sideTableShadow;
+    coffeeTable.originalPosition = {x: 250, y:400};
     
+    sideTable = platforms.create(406, 200, 'side_table');
+    sideTable.originalPosition = {x: 406, y:200};
+    sideTable.shadow_layer = sideTableShadow;
 
+    // create screen shade thing here
+
+    shade = game.add.sprite(25, 25, 'shade');
+
+    shade.scale.setTo(1000, 600);
+    shade.alpha = 0.5;
+    
     dock = game.add.group();
     dock.enableBody = true;
 
@@ -262,8 +298,8 @@ function create() {
     redDot.alpha = 0.0;
     
     // The player and its settings
-    startX = game.world.width/2;
-    startY = game.world.height/2;
+    startX = dockSprite.centerX;
+    startY = dockSprite.centerY - 10;
     shadowSprite = game.add.sprite(startX, startY, 'roombaShadow');
     shadowSprite.anchor.setTo(0.5, 0.5);
     shadowSpriteLighter = game.add.sprite(startX, startY, 'roombaShadow2');
@@ -271,6 +307,7 @@ function create() {
     shadowSpriteLighter.alpha = .15;
     
     player = game.add.sprite(startX, startY, 'roomba');
+    player.angle = -90;
     player.anchor = new Phaser.Point(0.5, 0.5);
 
     redLight = game.add.sprite(startX, startY, 'red_triangle');
@@ -302,8 +339,42 @@ function create() {
     
     //  Our controls.
     cursors = game.input.keyboard.createCursorKeys();
+    
+    dirtMeter = game.add.sprite(190, 36, 'dirt_meter', 0);
+    dirtMeter.angle = 90;
 
-    dirtMeter = game.add.sprite(50, 50, 'dirt_meter', 0);
+    dirtGlow = game.add.sprite(190, 36, 'dirt_meter_glow');
+    dirtGlow.angle = 90;
+    dirtGlow.alpha = 0;
+    
+    dirtCounter = game.add.sprite(190, 41, 'dirt_counter');
+    dirtCounterText = game.add.text(dirtCounter.centerX, dirtCounter.centerY, '0',
+				    {font: "bold 12px Helvetica Neue", fill: "#422a0f", align:"center"});
+    dirtCounterText.anchor.setTo(0.5, 0.5);
+
+    dirtCounterShine = game.add.sprite(196, 46, 'dirt_counter_shine');
+    
+    textStyle = {font: "18px Helvetica Neue", fill: "#fff", align: "center"};
+    gameoverTitleText = game.add.text(game.world.centerX, game.world.centerY - 28, "Game Over", textStyle);
+    gameoverTitleText.anchor.setTo(0.5, 0.5);
+    gameoverTitleText.alpha = 0.0;
+
+    textStyle = {font: "16px Helvetica Neue", fill: "#fff", align: "center"};
+    gameoverText = game.add.text(game.world.centerX, game.world.centerY, "", textStyle);
+    gameoverText.anchor.setTo(0.5, 0.5);
+    gameoverText.alpha = 0.0;
+
+    textStyle = {font: "14px Helvetica Neue", fill: "#fff", align: "center"};
+    gameoverRestartText = game.add.text(game.world.centerX, game.world.centerY + 28, "Hit SPACE to restart.", textStyle);
+    gameoverRestartText.anchor.setTo(0.5, 0.5);
+    gameoverRestartText.alpha = 0.0;
+
+    startBubble = game.add.sprite(startX - 240, startY- 180, 'start_bubble');
+}
+
+function pad(num, size) {
+    var s = "0000000" + num;
+    return s.substr(s.length-size);
 }
 
 function onSoundDecoded() {
@@ -311,15 +382,26 @@ function onSoundDecoded() {
     console.log("Sounds ready?");
 }
 
-function onVacSoundDecoded() {
-    if (decodedDict['vac_on'] && decodedDict['vac_idle']){
-	vacOn.play();
-    }
-}
-
 function update() {
+    
+    if (animatingRestart) {
+	fadeRate = 0.2;
+	shade.alpha = lerp(shade.alpha, 0.5, fadeRate);
+	startBubble.alpha = lerp(startBubble.alpha, 1.0, fadeRate);
+	gameoverTitleText.alpha = 0.0;
+	gameoverText.alpha = 0.0;
+	gameoverRestartText.alpha = 0.0;
+	handleDocking();
+	if (dockingState == LEAVING_DOCK && startBubble.alpha > 0.9) {
+	    animatingRestart = false;
+	    gameOver = false;
+	    console.log("animating restart finished!");
+	}
+	return;
 
-    roombaSpeed = dirtCollected < 100.0 ? dirtCollected < 150.0 ? 200 : 150 : 100;
+    }
+
+    roombaSpeed = dirtCollected < 100.0 ? (dirtCollected < 75.0 ? 200 : 150) : 100;
     //  Collide the player and the dirts with the platforms
     game.physics.arcade.collide(player, platforms);
     game.physics.arcade.collide(dirts, platforms);
@@ -330,18 +412,39 @@ function update() {
     //  Reset the players velocity (movement)
 
     if (currentBattery > 0.0) {
-	redLight.alpha = 0.0;
-	if (yellowLightDirection == 1) {
-	    yellowLight.alpha = lerp(yellowLight.alpha, 1.0, 0.1);
-	    if (Math.abs(yellowLight.alpha) > 0.99) {
-		yellowLightDirection = -1;
+	if (currentBattery < 33.0) {
+	    yellowLight.alpha = 0;
+	    if (redLightDirection == 0) {
+		redLightDirection = 1;
 	    }
-	} else if (yellowLightDirection == -1) {
-	    yellowLight.alpha = lerp(yellowLight.alpha, 0.0, 0.1);
-	    if (Math.abs(yellowLight.alpha) < 0.01) {
-		yellowLightDirection = 1;
+	    else if (redLightDirection == 1){
+		console.log("red light up");
+		redLight.alpha = lerp(redLight.alpha, 1.0, 0.15);
+		if (redLight.alpha > 0.9) {
+		    redLightDirection = -1;
+		}
+	    } else if (redLightDirection == -1) {
+		console.log("red light down");
+		redLight.alpha = lerp(redLight.alpha, 0.0, 0.15);
+		if (redLight.alpha < 0.1) {
+		    redLightDirection = 1;
+		}
+	    }
+	} else {
+	    redLight.alpha = 0.0;
+	    if (yellowLightDirection == 1) {
+		yellowLight.alpha = lerp(yellowLight.alpha, 1.0, 0.1);
+		if (Math.abs(yellowLight.alpha) > 0.99) {
+		    yellowLightDirection = -1;
+		}
+	    } else if (yellowLightDirection == -1) {
+		yellowLight.alpha = lerp(yellowLight.alpha, 0.0, 0.1);
+		if (Math.abs(yellowLight.alpha) < 0.01) {
+		    yellowLightDirection = 1;
+		}
 	    }
 	}
+	
 	
 	if (idleRotation && !docking) {
 	    yellowLight.angle = redLight.angle = shadowSpriteLighter.angle = shadowSprite.angle = player.angle = (player.angle + (rotationDirection == CW ? 2 : -2)) % 360;
@@ -399,6 +502,22 @@ function update() {
 	spaceBar = game.input.keyboard.addKey(Phaser.KeyCode.SPACEBAR);
 	spaceBar.onDown.add(startMovement, this);
     } else {
+	// CURRENT BATTERY IS ZERO!
+	fadeRate = 0.05;
+
+	shade.alpha = lerp(shade.alpha, 1.0, fadeRate);
+	if (shade.alpha > 0.7) {
+	    gameoverText.setText("Your battery has died. You cleaned up " + totalDirtCleaned + " messes.");
+	    gameoverText.alpha = lerp(gameoverText.alpha, 1.0, fadeRate);
+	    gameoverTitleText.alpha = lerp(gameoverText.alpha, 1.0, fadeRate);
+	    gameoverRestartText.alpha = lerp(gameoverRestartText.alpha, 0.4, fadeRate);
+	}
+
+	if (Math.abs(gameoverText.alpha - 1.0) < 0.05) {
+	    gameStarted = false;
+	    gameOver = true;
+	}
+	
 	yellowLight.alpha = 0.0;
 	player.body.velocity.x = lerp(player.body.velocity.x, 0, 0.1);
 	player.body.velocity.y = lerp(player.body.velocity.y, 0, 0.1);
@@ -488,57 +607,8 @@ function update() {
     angleRate = 0.1;
     
     if (docking) {
-	if (dockingState == ARRIVING_AT_DOCK) {
-
-	    dockingTargetX = dockSprite.centerX;
-	    dockingTargetY = dockSprite.centerY - 10.0;
-	    
-	    if (vacMove.isPlaying){
-		vacMove.stop();
-	    }
-	    if (vacAccel.isPlaying){
-		vacAccel.stop();
-	    }
-	    player.angle = lerp(player.angle, 90.0, angleRate);
-	    player.centerX = lerp(player.centerX, dockingTargetX, dockRate);
-	    player.centerY = lerp(player.centerY, dockingTargetY, dockRate);
-	    
-
-	    if (Math.abs(player.centerX - dockingTargetX) <= 0.05 &&
-		Math.abs(player.centerY - dockingTargetY) <= 0.05 &&
-		Math.abs(player.angle - 90.0) < 0.05) {
-		rotationDirection = CW;
-		dockingState = LEAVING_DOCK;
-
-	    } 
-	    currentBattery = 100.0;
-	    dirtCollected = 0.0;
-	}
-	if (dockingState == LEAVING_DOCK) {
-	    currentBattery = 100.0;
-	    
-	    dockingTargetX = dockSprite.centerX;
-	    dockingTargetY = dockSprite.centerY - 60.0;
-	    
-	    player.angle = lerp(player.angle, -90.0, angleRate);
-	    //console.log("leaving angle: "+player.angle);
-	    if (Math.abs(player.angle + 90.0) < 1.0) {
-		player.centerX = lerp(player.centerX, dockingTargetX, dockRate);
-		player.centerY = lerp(player.centerY, dockingTargetY, dockRate);
-		if (dockSprite.centerY - player.centerY > 59.0) {
-		    dockingState = NOT_DOCKING;
-		    docking = false;
-		    idleRotation = true;
-		    player.body.velocity.x = 0;
-		    player.body.velocity.y = 0;
-		    dockTimeout = 100.0;
-		} 
-	    } 
-	}
-	yellowLight.angle = player.angle;
-	yellowLight.x = player.x;
-	yellowLight.y = player.y;
 	
+	handleDocking();
     }
 
     if (dockTimeout > 0.0) {
@@ -559,8 +629,30 @@ function update() {
 	    hearts[i].frame = frame;
 	}
     }
+    if (dirtCollected == 100.0) {
+	if (dirtGlowDirection == 0) {
+	    dirtGlowDirection = 1;
 
+	}
+	if (dirtGlowDirection == 1) {
+	    
+	    dirtGlow.alpha = lerp(dirtGlow.alpha, 1.0, 0.15);
+	    if (dirtGlow.alpha > 0.9) {
+		dirtGlowDirection = -1;
+	    }
+	} else if (dirtGlowDirection == -1) {
+
+	    dirtGlow.alpha = lerp(dirtGlow.alpha, 0.0, 0.15);
+	    if (dirtGlow.alpha < 0.1) {
+		dirtGlowDirection = 1;
+	    }
+	}
+    } else {
+	dirtGlowDirection = 0;
+	dirtGlow.alpha = 0.0;
+    }
     dirtMeter.frame = Math.min(Math.max(0, Math.floor(dirtCollected/5.0) -1), 19);
+    dirtCounterText.setText(pad(totalDirtCleaned, 4));
 }
 
 function collectDirt(player, dirt) {
@@ -578,7 +670,10 @@ function collectDirt(player, dirt) {
 function goToDock(player, dock){
     
     if (!docking && dockTimeout == 0.0) {
-	console.log('gotodock?');
+
+	totalDirtCleaned += Math.floor(dirtCollected/5.0);
+	
+	dockSound.play();
 	docking = true;
 	player.body.velocity.x = 0;
 	player.body.velocity.y = 0;
@@ -597,13 +692,20 @@ function goToDock(player, dock){
     }
 }
 
+function dropDirtTimer() {
+    if (gameStarted) {
+	dropDirt();
+    }
+
+}
+
 function dropDirt() {
     if (currentBattery > 0.0 && dirts.length < 50) {
 	index = Math.floor(dirtDict.length*Math.random());
 
 	columnIndex = Math.floor(Math.random()*16);
 	rowIndex = Math.floor(Math.random()*8);
-	dirt = dirts.create(columnIndex*50, rowIndex*50, dirtDict[index]);
+	dirt = dirts.create(150 + columnIndex*50, 150 + rowIndex*50, dirtDict[index]);
 	dirt.anchor.setTo(0.5, 0.5);
     }
 }
@@ -613,16 +715,115 @@ function lerp(a, b, pct) {
 }
 
 function startMovement() {
-    if (idleRotation && !docking) {
-	idleRotation = false;
-	if (vacOn.isPlaying) {
-	    vacOn.stop();
-	}
-	if (vacIdle.isPlaying){
-	    vacIdle.stop();
-	}
-	if (!vacAccel.isPlaying && !vacMove.isPlaying) {
-	    vacAccel.play();
-	}
+
+    if (animatingRestart) {
+	return;
     }
+    
+    if (gameStarted) {
+    
+	if (idleRotation && !docking) {
+	    idleRotation = false;
+	    if (vacOn.isPlaying) {
+		vacOn.stop();
+	    }
+	    if (vacIdle.isPlaying){
+		vacIdle.stop();
+	    }
+	    if (!vacAccel.isPlaying && !vacMove.isPlaying) {
+		vacAccel.play();
+	    }
+	}
+    } else if (!gameOver){
+	totalDirtCleaned = 0;
+	dirtCollected = 0;
+	console.log("starting game...");
+	gameStarted = true;
+	idleRotation = false;
+	dockingState = LEAVING_DOCK;
+	startBubble.alpha = 0;
+	shade.alpha = 0;
+	vacOn.play();
+	redLightDirection = 0;
+	didPlayVacOff = false;
+    } else {
+	dockSound.play();
+	platforms.forEach(function(sprite) {
+	    sprite.body.velocity.x = 0;
+	    sprite.body.velocity.y = 0;
+	    if (sprite.originalPosition != undefined) {
+		sprite.x = sprite.originalPosition.x;
+		sprite.y = sprite.originalPosition.y;
+	    }
+
+	    if (sprite.shadow_layer != undefined) {
+		sprite.shadow_layer.x = sprite.x;
+		delta = sprite.shadow_layer.shadow_delta_y == undefined ? 4 : sprite.shadow_layer.shadow_delta_y;
+		sprite.shadow_layer.y = sprite.y + delta;
+	    }
+	    
+	});
+	
+	docking = true;
+	gameOver = false;
+	animatingRestart = true;
+	dockingState = ARRIVING_AT_DOCK;
+	
+    }
+}
+
+function handleDocking() {
+    if (dockingState == ARRIVING_AT_DOCK) {
+
+	dockingTargetX = dockSprite.centerX;
+	dockingTargetY = dockSprite.centerY - 10.0;
+	
+	if (vacMove.isPlaying){
+	    vacMove.stop();
+	}
+	if (vacAccel.isPlaying){
+	    vacAccel.stop();
+	}
+	player.angle = lerp(player.angle, 90.0, angleRate);
+	player.centerX = lerp(player.centerX, dockingTargetX, dockRate);
+	player.centerY = lerp(player.centerY, dockingTargetY, dockRate);
+	
+
+	if (Math.abs(player.centerX - dockingTargetX) <= 0.05 &&
+	    Math.abs(player.centerY - dockingTargetY) <= 0.05 &&
+	    Math.abs(player.angle - 90.0) < 0.05) {
+	    rotationDirection = CW;
+	    dockingState = LEAVING_DOCK;
+
+	} 
+	currentBattery = 100.0;
+	dirtCollected = 0.0;
+    }
+    if (dockingState == LEAVING_DOCK) {
+	currentBattery = 100.0;
+	
+	dockingTargetX = dockSprite.centerX;
+	dockingTargetY = dockSprite.centerY - 60.0;
+	
+	player.angle = lerp(player.angle, -90.0, angleRate);
+	//console.log("leaving angle: "+player.angle);
+	if (Math.abs(player.angle + 90.0) < 1.0) {
+	    if (!animatingRestart && gameStarted) {
+		player.centerX = lerp(player.centerX, dockingTargetX, dockRate);
+		player.centerY = lerp(player.centerY, dockingTargetY, dockRate);
+		if (dockSprite.centerY - player.centerY > 59.0) {
+		    dockingState = NOT_DOCKING;
+		    docking = false;
+		    idleRotation = true;
+		    player.body.velocity.x = 0;
+		    player.body.velocity.y = 0;
+		    dockTimeout = 100.0;
+		}
+	    }
+	} 
+    }
+    yellowLight.angle = player.angle;
+    yellowLight.x = player.x;
+    yellowLight.y = player.y;
+    
 }
