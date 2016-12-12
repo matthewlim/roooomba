@@ -39,8 +39,8 @@ function preload() {
     game.load.image('splat_02', 'assets/dirts/spill_blue.png');
     game.load.image('splat_03', 'assets/dirts/spill_green.png');
     game.load.image('arrows_01', 'assets/dirts/brokenArrows.png');
-    game.load.image('red_triangle', 'assets/triangle_glowRed.png');
-    game.load.image('yellow_triangle', 'assets/triangle_glowYellow.png');
+    game.load.image('red_triangle', 'assets/triangle_glow_red.png');
+    game.load.image('yellow_triangle', 'assets/triangle_glow_yellow.png');
     game.load.image('reddot', 'assets/reddot.png');
     game.load.image('start_bubble', 'assets/start_bubble.png');
     game.load.image('dirt_counter', 'assets/dirt_counter.png');
