@@ -7,7 +7,7 @@ function preload() {
     game.load.image('roombaShadow', 'assets/ZeldaRoomba_shadow.png');
     game.load.image('roombaShadow2', 'assets/ZeldaRoomba_shadow.png');
     game.load.image('speck', 'assets/speck.png');
-
+    
     game.load.image('floor', 'assets/floor.png');
     game.load.audio('bounce', 'assets/bounce.mp3');
     game.load.audio('vac_on', 'assets/vac_on.mp3');
@@ -25,6 +25,9 @@ function preload() {
     game.load.image('potted_plant_shadow', 'assets/potted_plant_shadow.png');
     game.load.image('tv', 'assets/tv.png');
     game.load.image('tv_shadow', 'assets/tv_shadow.png');
+    game.load.image('dock', 'assets/dock.png');
+    game.load.image('dock_shadow', 'assets/dock_shadow.png');
+    game.load.spritesheet('heart', 'assets/heart_sprite.png', 32, 32);
 }
 
 var player;
@@ -56,11 +59,21 @@ var vacAccel;
 var vacMove;
 var vacIdle;
 
+var currentBattery = 100.0;
+
 var dirtParticle;
 
 var decodedDict = [];
-
+var hearts = [];
 var emitter;
+var dockSprite;
+var docking = false
+
+var ARRIVING_AT_DOCK = 1;
+var LEAVING_DOCK = 2;
+var NOT_DOCKING = 0;
+
+var dockingState = NOT_DOCKING;
 
 function create() {
     decodedDict['vac_on'] = false;
@@ -71,20 +84,11 @@ function create() {
     game.add.sprite(125, 125, 'floor');
     
     dirts = game.add.group();
-
-    //  We will enable physics for any star that is created in this group
     dirts.enableBody = true;
-    //  Here we'll create 12 of them evenly spaced apart
     for (var i = 0; i < 14; i++)
     {
-        //  Create a star inside of the 'dirts' group
         var dirt = dirts.create(150 + i * 50, 150 + Math.random()*375, 'dirt_01');
 	dirt.anchor.setTo(0.5,0.5);
-        //  Let gravity do its thing
-        //star.body.gravity.y = 300;
-
-        //  This just gives each star a slightly random bounce value
-        dirt.body.bounce.y = 0.7 + Math.random() * 0.2;
     }
 
     tvShadow = game.add.sprite(0, 0, 'tv_shadow');
@@ -106,11 +110,9 @@ function create() {
     emitter = game.add.emitter(0, 0, 50);
     emitter.makeParticles('speck');
     emitter.gravity = 0;
-
     
     bounceSound = game.add.audio('bounce');
     bounceSound.onDecoded.add(onSoundDecoded, this);
-
     
     vacOn = game.add.audio('vac_on');
     vacOn.onDecoded.add(function() {decodedDict['vac_on'] = true; onVacSoundDecoded();}, this);
@@ -157,12 +159,18 @@ function create() {
 
     plant1 = platforms.create(408, 200, 'potted_plant');
     plant1.shadow_layer = plant1Shadow;
+
     plant2 = platforms.create(558, 200, 'potted_plant');
     plant2.shadow_layer = plant2Shadow;
-
     
     tv = platforms.create(200, 400, 'tv');
     tv.shadow_layer = tvShadow;
+
+    dock = game.add.group();
+    dock.enableBody = true;
+    dockSprite = dock.create(game.world.width - 200, game.world.height/2, 'dock');
+    dockSprite.anchor.setTo(0.5, 0.5);
+    dockSprite.immovable = true;
     
     // The player and its settings
     startX = game.world.width/2;
@@ -184,10 +192,15 @@ function create() {
 
     player.body.collideWorldBounds = true;
 
+    for (var i = 0; i < 8; i++) {
+	var heart = game.add.sprite(game.world.width - 28*8 -28 +28 *i , 50, 'heart', 0);
+	heart.anchor.setTo(0.5,0.5);
+	
+	hearts.push(heart);
+    }
+    
     //  Our controls.
     cursors = game.input.keyboard.createCursorKeys();
-
-    
 }
 
 function onSoundDecoded() {
@@ -201,10 +214,6 @@ function onVacSoundDecoded() {
     }
 }
 
-function onVacuumMoveStartComplete() {
-
-}
-
 function update() {
 
     roombaSpeed = 200;
@@ -214,32 +223,45 @@ function update() {
     game.physics.arcade.collide(platforms, platforms);
     //  Checks to see if the player overlaps with any of the dirts, if he does call the collectDirt function
     game.physics.arcade.overlap(player, dirts, collectDirt, null, this);
-
+    game.physics.arcade.overlap(player, dockSprite, goToDock, null, this);
     //  Reset the players velocity (movement)
-    if (idleRotation) {
+    if (idleRotation && !docking) {
 	shadowSpriteLighter.angle = shadowSprite.angle = player.angle = (player.angle + (rotationDirection == CW ? 2 : -2)) % 360;
 	
-    } else {
-
+    } else if (!idleRotation && !docking){
+	console.log('updating velocity');
+	
 	player.body.velocity.y = lerp(player.body.velocity.y, Math.sin(player.rotation)*roombaSpeed, 0.1);
 	player.body.velocity.x = lerp(player.body.velocity.x, Math.cos(player.rotation)*roombaSpeed, 0.1);
     }
     
-    if (cursors.left.isDown)
+    if (cursors.left.isDown && idleRotation)
     {
 	if (rotationDirection != CCW) {
             if (vacIdle.isPlaying){
 		vacIdle.stop();
 	    }
+	    if (vacAccel.isPlaying){
+		vacAccel.stop();
+	    }
+	    if (vacMove.isPlaying){
+		vacMove.stop();
+	    }
 	    vacIdle.play();
 	    rotationDirection = CCW;
 	}
     }
-    else if (cursors.right.isDown)
+    else if (cursors.right.isDown && idleRotation)
     {
 	if (rotationDirection != CW){
 	    if (vacIdle.isPlaying){
 		vacIdle.stop();
+	    }
+	    if (vacAccel.isPlaying){
+		vacAccel.stop();
+	    }
+	    if (vacMove.isPlaying){
+		vacMove.stop();
 	    }
 	    vacIdle.play();
 	    rotationDirection = CW;
@@ -253,7 +275,7 @@ function update() {
     spaceBar = game.input.keyboard.addKey(Phaser.KeyCode.SPACEBAR);
     spaceBar.onDown.add(startMovement, this);
 
-    if (!player.body.touching.none && !didCollectDirt) {
+    if (!player.body.touching.none && !didCollectDirt && !docking) {
 	player.body.velocity.x = 0;
 	player.body.velocity.y = 0;
 	recoilTicker = RECOIL_MAX;
@@ -306,22 +328,84 @@ function update() {
 	    sprite.shadow_layer.y = sprite.y + 4;
 	}
     });
-}
 
-function markerComplete(key) {
+    dockRate = 0.1;
+    angleRate = 0.1;
     
-    console.log(key+ " complete");
-    
-    switch(key) {
-    case 'vac_on':
-	console.log('complete: '+key);
-	vacIdle.play();
-	break;
+    if (docking) {
+	if (dockingState == ARRIVING_AT_DOCK) {
+	    //case ARRIVING_AT_DOCK:
+	    player.angle = lerp(player.angle, 0.0, angleRate);
+	    player.centerX = lerp(player.centerX, dockSprite.centerX - 10.0, dockRate);
+	    player.centerY = lerp(player.centerY, dockSprite.centerY, dockRate);
+
+	    
+	    
+	    console.log("arriving? dock");
+	    if (Math.abs(player.centerX - (dockSprite.centerX - 10)) <= 40.0 &&
+		Math.abs(player.centerY - dockSprite.centerY) <= 0.05 &&
+		Math.abs(player.angle) < 0.5) {
+		
+		dockingState = LEAVING_DOCK;
+		console.log("leaving dock");
+	    } else {
+		console.log("playerx diff: "+Math.abs(player.centerX - (dockSprite.centerX - 10)));
+		console.log("playery diff: "+Math.abs(player.centerY - (dockSprite.centerY)));
+		console.log("player.x:" +player.centerX);
+		console.log("player.y:" +player.centerY); 
+		console.log("dock.x: "+dockSprite.centerX);
+		console.log("dock.y: "+dockSprite.centerY);
+		console.log("player.angle:" +player.angle); 
+	    }
+	    currentBattery = 100.0;
+	    //break;
+	}
+	if (dockingState == LEAVING_DOCK) {
+	    currentBattery = 100.0;
+	    player.angle = lerp(player.angle, 180.0, angleRate/2);
+	    //console.log("leaving angle: "+player.angle);
+	    if (Math.abs(player.angle - 180.0) < 0.1) {
+		player.centerX = lerp(player.centerX, dockSprite.centerX - 60, dockRate);
+		player.centerY = lerp(player.centerY, dockSprite.centerY, dockRate);
+		if (dockSprite.centerX - player.centerX > 59.0) {
+		    dockingState = NOT_DOCKING;
+		    docking = false;
+		    console.log("not docking");
+		    idleRotation = true;
+		    player.body.velocity.x = 0;
+		    player.body.velocity.y = 0;
+		    
+		} else {
+		    
+		    console.log("playerx: "+Math.abs(player.x - (dockSprite.x - 60)));
+		    console.log("playery: "+Math.abs(player.y - (dockSprite.y)));
+		    
+		}
+	    } else {
+		console.log("leaving angle: "+Math.abs(player.angle - 180.0));
+		
+	    }
+	}
+
+	
     }
+
     
+    
+    currentBattery -= docking ? 0 : (idleRotation ? 0.025 : 0.075);
+
+    for (var i = 0; i < hearts.length ; i++) {
+	if (currentBattery >= (i+1)*12.5) {
+	    hearts[i].frame = 0;
+	} else {
+	    difference = (i+1)*12.5 - currentBattery;
+	    frame = Math.max(0, Math.min(Math.floor(difference/3.125), 4));
+	    hearts[i].frame = frame;
+	}
+    }
 }
 
-function collectDirt (player, star) {
+function collectDirt(player, star) {
     
     // Removes the star from the screen
     star.kill();
@@ -332,12 +416,36 @@ function collectDirt (player, star) {
     didCollectDirt = true;
 }
 
+function goToDock(player, dock){
+    
+    if (!docking) {
+	console.log('gotodock?');
+	docking = true;
+	player.body.velocity.x = 0;
+	player.body.velocity.y = 0;
+	//idleRotation = true;
+	dockingState = ARRIVING_AT_DOCK;
+	if (vacMove.isPlaying){
+	    vacMove.stop();
+	}
+	if (vacAccel.isPlaying){
+	    vacAccel.stop();
+	}
+	if(vacIdle.isPlaying){
+	    vacIdle.stop();
+	}
+	vacIdle.play();
+    
+    }
+    
+}
+
 function lerp(a, b, pct) {
     return (a + pct*(b - a));
 }
 
 function startMovement() {
-    if (idleRotation) {
+    if (idleRotation && !docking) {
 	idleRotation = false;
 	if (vacOn.isPlaying) {
 	    vacOn.stop();
