@@ -1,4 +1,4 @@
-var game = new Phaser.Game(1050, 650, Phaser.AUTO, '', { preload: preload, create: create, update: update });
+var game = new Phaser.Game(1050, 650, Phaser.AUTO, 'game_content', { preload: preload, create: create, update: update });
 
 function preload() {
 
@@ -21,7 +21,7 @@ function preload() {
     game.load.image('wall_bottom', 'assets/wall_bottom.png');
     game.load.image('couch', 'assets/couch.png');
     game.load.image('couch_shadow', 'assets/couch_shadow.png');
-    game.load.image('dirt_01', 'assets/dirt_01.png');
+    game.load.image('dirt_01', 'assets/dirts/dirt_01.png');
     game.load.image('potted_plant', 'assets/potted_plant.png');
     game.load.image('potted_plant_shadow', 'assets/potted_plant_shadow.png');
     game.load.image('coffee_table', 'assets/coffee_table.png');
@@ -33,9 +33,10 @@ function preload() {
     game.load.image('dock_shadow', 'assets/dock_shadow.png');
     game.load.spritesheet('heart', 'assets/heartGreen_sprite.png', 32, 32);
     game.load.spritesheet('dirt_meter', 'assets/dirtmeter_sprite.png', 32, 160);
-    game.load.image('splat_01', 'assets/spill_red.png');
-    game.load.image('splat_02', 'assets/spill_blue.png');
-    game.load.image('splat_03', 'assets/spill_green.png');
+    game.load.image('splat_01', 'assets/dirts/spill_red.png');
+    game.load.image('splat_02', 'assets/dirts/spill_blue.png');
+    game.load.image('splat_03', 'assets/dirts/spill_green.png');
+    game.load.image('arrows_01', 'assets/dirts/brokenArrows.png');
     game.load.image('red_triangle', 'assets/triangle_glowRed.png');
     game.load.image('yellow_triangle', 'assets/triangle_glowYellow.png');
     game.load.image('reddot', 'assets/reddot.png');
@@ -96,7 +97,7 @@ var dockingState = NOT_DOCKING;
 
 var dirtMeter;
 var dirtCollected = 0.0;
-var dirtDict = ['dirt_01', 'splat_01', 'splat_02', 'splat_03'];
+var dirtDict = ['dirt_01', 'splat_01', 'splat_02', 'splat_03', 'arrows_01'];
 var dirtTimer;
 var didPlayVacOff;
 var deathAngle;
@@ -116,10 +117,9 @@ function create() {
     
     dirts = game.add.group();
     dirts.enableBody = true;
-    for (var i = 0; i < 14; i++)
+    for (var i = 0; i < 20; i++)
     {
-        var dirt = dirts.create(150 + i * 50, 150 + Math.random()*375, 'dirt_01');
-	dirt.anchor.setTo(0.5,0.5);
+        dropDirt();
     }
     // SHADOWS
     /*tvShadow = game.add.sprite(0, 0, 'tv_shadow');
