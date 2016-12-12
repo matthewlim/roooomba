@@ -16,15 +16,18 @@ function preload() {
     game.load.audio('vac_move', 'assets/vac_move.mp3');
     game.load.image('wall_top', 'assets/wall_top.png');
     game.load.image('wall_left', 'assets/wall_left.png');
-    game.load.image('wall_right', 'assets/wall_right.png');
+    game.load.image('wall_right_door', 'assets/wall_right_door.png');
     game.load.image('wall_bottom', 'assets/wall_bottom.png');
     game.load.image('couch', 'assets/couch.png');
     game.load.image('couch_shadow', 'assets/couch_shadow.png');
     game.load.image('dirt_01', 'assets/dirt_01.png');
     game.load.image('potted_plant', 'assets/potted_plant.png');
     game.load.image('potted_plant_shadow', 'assets/potted_plant_shadow.png');
-    game.load.image('tv', 'assets/tv.png');
-    game.load.image('tv_shadow', 'assets/tv_shadow.png');
+    game.load.image('coffee_table', 'assets/coffee_table.png');
+    game.load.image('coffee_table_shadow', 'assets/coffee_table_shadow.png');
+    game.load.image('side_table', 'assets/side_table.png');
+    game.load.image('side_table_shadow', 'assets/side_table_shadow.png');
+    game.load.image('rug', 'assets/rug.png');
     game.load.image('dock', 'assets/dock.png');
     game.load.image('dock_shadow', 'assets/dock_shadow.png');
     game.load.spritesheet('heart', 'assets/heartGreen_sprite.png', 32, 32);
@@ -81,7 +84,9 @@ function create() {
     
     game.physics.startSystem(Phaser.Physics.ARCADE);
     
-    game.add.sprite(125, 125, 'floor');
+    floor = game.add.sprite(125, 125, 'floor');
+
+    game.add.sprite(600, 200, 'rug');
     
     dirts = game.add.group();
     dirts.enableBody = true;
@@ -90,17 +95,43 @@ function create() {
         var dirt = dirts.create(150 + i * 50, 150 + Math.random()*375, 'dirt_01');
 	dirt.anchor.setTo(0.5,0.5);
     }
+    // SHADOWS
+    /*tvShadow = game.add.sprite(0, 0, 'tv_shadow');
+      tvShadow.alpha = 0.15;*/
+    
+    //sideTableShadow.alpha = 0.15;
 
-    tvShadow = game.add.sprite(0, 0, 'tv_shadow');
-    tvShadow.alpha = 0.15;
-
-    plant1Shadow = game.add.sprite(0, 0, 'potted_plant_shadow');
+    shadows = game.add.group();
+    
+    plant1Shadow = shadows.create(0, 0, 'potted_plant_shadow');
     plant1Shadow.alpha = 0.15;
-    plant2Shadow = game.add.sprite(0, 0, 'potted_plant_shadow');
+    plant2Shadow = shadows.create(0, 0, 'potted_plant_shadow');
     plant2Shadow.alpha = 0.15;
+    
+    plant3Shadow = shadows.create(0, 0, 'potted_plant_shadow');
+    plant3Shadow.alpha = 0.15;
 
-    couchShadow = game.add.sprite(0, 0, 'couch_shadow');
+    plant4Shadow = shadows.create(0, 0, 'potted_plant_shadow');
+    plant4Shadow.alpha = 0.15;
+
+    couchShadow = shadows.create(0, 0, 'couch_shadow');
     couchShadow.alpha = 0.15;
+    
+    dockShadow = shadows.create(0, 0, 'dock_shadow');
+    dockShadow.anchor.setTo(0.5, 0.5);
+    dockShadow.alpha = 0.15;
+    
+
+    coffeeTableShadow = shadows.create(0, 0, 'coffee_table_shadow');
+    coffeeTableShadow.alpha = 0.15;
+    coffeeTableShadow.shadow_delta_y = 8;
+    //coffeeTableShadow.name = "coffeetableshadow";
+
+    
+    sideTableShadow = shadows.create(0, 0, 'side_table_shadow');
+    sideTableShadow.alpha = 0.25;
+    sideTableShadow.shadow_delta_y = 20;
+    //sideTableShadow.name = "sideetableshadow";
     
     platforms = game.add.group();
 
@@ -144,7 +175,7 @@ function create() {
     leftWall = platforms.create(0, 125, 'wall_left');
     leftWall.body.immovable = true;
     
-    rightWall = platforms.create(game.world.width - 125, 125, 'wall_right');
+    rightWall = platforms.create(game.world.width - 125, 125, 'wall_right_door');
     rightWall.body.immovable = true;
 
     bottomWall = platforms.create(0, game.world.height -125, 'wall_bottom');
@@ -157,20 +188,44 @@ function create() {
     couch.shadow_layer = couchShadow;
     couch.body.immovable = true;
 
-    plant1 = platforms.create(408, 200, 'potted_plant');
-    plant1.shadow_layer = plant1Shadow;
+    plant3 = platforms.create(200, 400, 'potted_plant');
+    plant3.shadow_layer = plant3Shadow;
 
-    plant2 = platforms.create(558, 200, 'potted_plant');
-    plant2.shadow_layer = plant2Shadow;
+    plant1 = platforms.create(600, 200, 'potted_plant');
+    plant1.shadow_layer = plant1Shadow;
     
-    tv = platforms.create(200, 400, 'tv');
-    tv.shadow_layer = tvShadow;
+    plant2 = platforms.create(750, 200, 'potted_plant');
+    plant2.shadow_layer = plant2Shadow;
+
+    
+
+    plant4 = platforms.create(800, 200, 'potted_plant');
+    plant4.shadow_layer = plant4Shadow;
+    
+    /*tv = platforms.create(200, 400, 'tv');
+      tv.shadow_layer = tvShadow;*/
+    coffeeTable = platforms.create(250, 400, 'coffee_table');
+    coffeeTable.shadow_layer = coffeeTableShadow;
+
+    sideTable = platforms.create(406, 200, 'side_table');
+    sideTable.shadow_layer = sideTableShadow;
+    
 
     dock = game.add.group();
     dock.enableBody = true;
-    dockSprite = dock.create(game.world.width - 150, game.world.height/2, 'dock');
+
+    dockBody = dock.create(game.world.width - 200, game.world.height - 152, 'speck');
+    
+    
+    dockBody.anchor.setTo(0.5, 0.5);
+    dockBody.immovable = true;
+
+    
+    
+    dockSprite = game.add.sprite(game.world.width - 200, game.world.height - 152, 'dock');
     dockSprite.anchor.setTo(0.5, 0.5);
-    dockSprite.immovable = true;
+    dockShadow.x = dockSprite.x;
+    dockShadow.y = dockSprite.y + 4;
     
     // The player and its settings
     startX = game.world.width/2;
@@ -193,9 +248,13 @@ function create() {
     player.body.collideWorldBounds = true;
 
     for (var i = 0; i < 8; i++) {
-	var heart = game.add.sprite(game.world.width - 28*8 -28 +28 *i , 50, 'heart', 0);
-	heart.anchor.setTo(0.5,0.5);
+
+	heartY = i > 5 ? 78 : 50;
+	heartStartX = i > 5 ? game.world.width - 9*28 : game.world.width - 7*28;
+	//var heart = game.add.sprite(game.world.width - 28*8 -28 +28 *i , heartY, 'heart', 0);
+	var heart = game.add.sprite(heartStartX +28 *i , heartY, 'heart', 0);
 	
+	heart.anchor.setTo(0.5,0.5);
 	hearts.push(heart);
     }
     
@@ -223,14 +282,12 @@ function update() {
     game.physics.arcade.collide(platforms, platforms);
     //  Checks to see if the player overlaps with any of the dirts, if he does call the collectDirt function
     game.physics.arcade.overlap(player, dirts, collectDirt, null, this);
-    game.physics.arcade.overlap(player, dockSprite, goToDock, null, this);
+    game.physics.arcade.overlap(player, dockBody, goToDock, null, this);
     //  Reset the players velocity (movement)
     if (idleRotation && !docking) {
 	shadowSpriteLighter.angle = shadowSprite.angle = player.angle = (player.angle + (rotationDirection == CW ? 2 : -2)) % 360;
 	
     } else if (!idleRotation && !docking){
-	console.log('updating velocity');
-	
 	player.body.velocity.y = lerp(player.body.velocity.y, Math.sin(player.rotation)*roombaSpeed, 0.1);
 	player.body.velocity.x = lerp(player.body.velocity.x, Math.cos(player.rotation)*roombaSpeed, 0.1);
     }
@@ -325,7 +382,8 @@ function update() {
 	sprite.body.velocity.y = lerp(sprite.body.velocity.y, 0, 0.1);
 	if (sprite.shadow_layer != undefined) {
 	    sprite.shadow_layer.x = sprite.x;
-	    sprite.shadow_layer.y = sprite.y + 4;
+	    delta = sprite.shadow_layer.shadow_delta_y == undefined ? 4 : sprite.shadow_layer.shadow_delta_y;
+	    sprite.shadow_layer.y = sprite.y + delta;
 	}
     });
 
@@ -334,25 +392,28 @@ function update() {
     
     if (docking) {
 	if (dockingState == ARRIVING_AT_DOCK) {
+
+	    dockingTargetX = dockSprite.centerX;
+	    dockingTargetY = dockSprite.centerY - 10.0;
+
+	    
 	    if (vacMove.isPlaying){
 		vacMove.stop();
 	    }
 	    if (vacAccel.isPlaying){
 		vacAccel.stop();
 	    }
-	    player.angle = lerp(player.angle, 0.0, angleRate);
-	    player.centerX = lerp(player.centerX, dockSprite.centerX - 10.0, dockRate);
-	    player.centerY = lerp(player.centerY, dockSprite.centerY, dockRate);
+	    player.angle = lerp(player.angle, 90.0, angleRate);
+	    player.centerX = lerp(player.centerX, dockingTargetX, dockRate);
+	    player.centerY = lerp(player.centerY, dockingTargetY, dockRate);
+	    
 
-	    
-	    
-	    console.log("arriving? dock");
-	    if (Math.abs(player.centerX - (dockSprite.centerX - 10)) <= 40.0 &&
-		Math.abs(player.centerY - dockSprite.centerY) <= 0.05 &&
-		Math.abs(player.angle) < 0.5) {
+	    if (Math.abs(player.centerX - dockingTargetX) <= 0.05 &&
+		Math.abs(player.centerY - dockingTargetY) <= 0.05 &&
+		Math.abs(player.angle - 90.0) < 0.05) {
 		rotationDirection = CW;
 		dockingState = LEAVING_DOCK;
-		console.log("leaving dock");
+
 	    } /*else {
 		console.log("playerx diff: "+Math.abs(player.centerX - (dockSprite.centerX - 10)));
 		console.log("playery diff: "+Math.abs(player.centerY - (dockSprite.centerY)));
@@ -367,27 +428,31 @@ function update() {
 	}
 	if (dockingState == LEAVING_DOCK) {
 	    currentBattery = 100.0;
-	    player.angle = lerp(player.angle, 180.0, angleRate/2);
+	    
+	    dockingTargetX = dockSprite.centerX;
+	    dockingTargetY = dockSprite.centerY - 60.0;
+	    
+	    player.angle = lerp(player.angle, -90.0, angleRate);
 	    //console.log("leaving angle: "+player.angle);
-	    if (Math.abs(player.angle - 180.0) < 0.1) {
-		player.centerX = lerp(player.centerX, dockSprite.centerX - 60, dockRate);
-		player.centerY = lerp(player.centerY, dockSprite.centerY, dockRate);
-		if (dockSprite.centerX - player.centerX > 59.0) {
+	    if (Math.abs(player.angle + 90.0) < 1.0) {
+		player.centerX = lerp(player.centerX, dockingTargetX, dockRate);
+		player.centerY = lerp(player.centerY, dockingTargetY, dockRate);
+		if (dockSprite.centerY - player.centerY > 59.0) {
 		    dockingState = NOT_DOCKING;
 		    docking = false;
-		    console.log("not docking");
+		    //console.log("not docking");
 		    idleRotation = true;
 		    player.body.velocity.x = 0;
 		    player.body.velocity.y = 0;
 		    
-		}/* else {
+		} /*else {
 		    
 		    console.log("playerx: "+Math.abs(player.x - (dockSprite.x - 60)));
 		    console.log("playery: "+Math.abs(player.y - (dockSprite.y)));
 		    
 		}*/
 	    } /*else {
-		console.log("leaving angle: "+Math.abs(player.angle - 180.0));
+		console.log("leaving angle: "+Math.abs(player.angle + 90.0));
 		
 	    }*/
 	}
