@@ -211,8 +211,6 @@ function create() {
     vacAccel.onStop.add(function(){
 	if (decodedDict['vac_move']) {
 	    vacMove.play();
-	} else {
-	    console.log("vac move not decoded?");
 	}
 	didCollide = false;
     }, this);
@@ -395,7 +393,6 @@ function update() {
 	if (dockingState == LEAVING_DOCK && startBubble.alpha > 0.9) {
 	    animatingRestart = false;
 	    gameOver = false;
-	    console.log("animating restart finished!");
 	}
 	return;
 
@@ -418,13 +415,11 @@ function update() {
 		redLightDirection = 1;
 	    }
 	    else if (redLightDirection == 1){
-		console.log("red light up");
 		redLight.alpha = lerp(redLight.alpha, 1.0, 0.15);
 		if (redLight.alpha > 0.9) {
 		    redLightDirection = -1;
 		}
 	    } else if (redLightDirection == -1) {
-		console.log("red light down");
 		redLight.alpha = lerp(redLight.alpha, 0.0, 0.15);
 		if (redLight.alpha < 0.1) {
 		    redLightDirection = 1;
@@ -662,7 +657,6 @@ function collectDirt(player, dirt) {
     
     //  Add and update the score
     dirtCollected = Math.min(100.0, dirtCollected + 5.0);
-    console.log("dirt: "+dirtCollected);
     didCollectDirt = true;
     dirts.remove(dirt);
 }
