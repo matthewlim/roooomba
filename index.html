@@ -1,22 +1,21 @@
-<!doctype html> 
-<html lang="en"> 
-<head> 
+<!doctype html>
+<html lang="en">
+<head>
 	<meta charset="UTF-8" />
     <title>The Legend of ROOMBA</title>
     <script src="//cdn.jsdelivr.net/phaser/2.6.2/phaser.min.js"></script>
-    
+
     <div id="header_image"><img src="assets/logo.png"></div>
     <div id="game_content"></div>
     <style type="text/css">
 
-      #byline {
-      font-family: Helvetica Neue, Sans-Serif;
-      color:#eee;
-      opacity: 0.4;
-      line-height: 130%;
+			#byline {
+			font-family: Helvetica Neue, Sans-Serif;
+			color:#1f1203;
+			line-height: 200%;
 
-      }
-      
+			}
+
       #game_instructions{
       font-family: Helvetica Neue, Sans-Serif;
       color:#ffffff;
@@ -29,7 +28,7 @@
       opacity: 0.5;
       line-height: 50%;
       }
-      
+
       #header_image {
       text-align:center;
       margin:40px;
@@ -39,7 +38,7 @@
       text-align:center;
       margin:40px;
       }
-      
+
       img {
       margin:0 auto;
 
@@ -48,30 +47,32 @@
       margin: 0;
       background-color: #422a0f;
       }
-      
+
       canvas {
       margin: auto;
       }
 
-      a {
+			a, a:visited {
       font-family: Helvetica Neue, Sans-Serif;
-      color: #eee;
-      line-height: 80%;
-
+      color: #1f1203;
       }
+
+			a:hover {
+				color: #fff;
+			}
     </style>
 
-    
+
 </head>
 
 <div id="footer_text">
   <p id="game_instructions">Keep things tidy and don't run out of juice.</p>
   <p id="game_controls">SPACE to go. ARROWS to change rotation.</p>
-
-  <p id="byline">by <a href="http://twitter.com/baxterjeff" target="_blank">@baxterjeff</a> and <a href="http://twitter.com/matthewylim" target="_blank">@matthewylim</a></p>
+<br>
+  <p id="byline">Made for <a href="http://ludumdare.com/compo/ludum-dare-37/?action=preview&uid=28145" target="blank">Ludum Dare 37</a> by <a href="http://twitter.com/baxterjeff" target="blank">@baxterjeff</a> and <a href="http://twitter.com/matthewylim" target="blank">@matthewylim</a></p>
 </div>
 <body>
-  
+
 <script type="text/javascript" src="game.js"></script>
 
 </body>
