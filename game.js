@@ -390,6 +390,9 @@ function update() {
 	gameoverText.alpha = 0.0;
 	gameoverRestartText.alpha = 0.0;
 	handleDocking();
+        updatePlayerLayerCoordinates();
+        updatePlayerLayerAngles();
+        
 	if (dockingState == LEAVING_DOCK && startBubble.alpha > 0.9) {
 	    animatingRestart = false;
 	    gameOver = false;
@@ -442,8 +445,7 @@ function update() {
 	
 	
 	if (idleRotation && !docking) {
-	    yellowLight.angle = redLight.angle = shadowSpriteLighter.angle = shadowSprite.angle = player.angle = (player.angle + (rotationDirection == CW ? 2 : -2)) % 360;
-
+	    player.angle = (player.angle + (rotationDirection == CW ? 2 : -2)) % 360;
 	    deathAngle = rotationDirection == CW ? (player.angle + 30) % 360 : (player.angle - 30) % 360;
 	    
 	} else if (!idleRotation && !docking){
@@ -502,7 +504,7 @@ function update() {
 
 	shade.alpha = lerp(shade.alpha, 1.0, fadeRate);
 	if (shade.alpha > 0.7) {
-	    gameoverText.setText("Your battery has died. You cleaned up " + totalDirtCleaned + " messes.");
+	    gameoverText.setText("Your battery has died. You cleaned up " + (totalDirtCleaned + dirtCollected/5) + " messes.");
 	    gameoverText.alpha = lerp(gameoverText.alpha, 1.0, fadeRate);
 	    gameoverTitleText.alpha = lerp(gameoverText.alpha, 1.0, fadeRate);
 	    gameoverRestartText.alpha = lerp(gameoverRestartText.alpha, 0.4, fadeRate);
@@ -534,9 +536,7 @@ function update() {
 	    vacOff.play();
 	}
 	if (idleRotation) {
-	    
-	    yellowLight.angle = redLight.angle = shadowSpriteLighter.angle = shadowSprite.angle = player.angle =
-		lerp(player.angle, deathAngle, 0.025);
+	    player.angle = lerp(player.angle, deathAngle, 0.025);
 	}
 	
     }
@@ -582,11 +582,7 @@ function update() {
 	}
     }
     
-    yellowLight.x = redLight.x = shadowSpriteLighter.x = shadowSprite.x = player.body.x + player.offsetX;
-    yellowLight.y = redLight.y = player.body.y + player.offsetY;
-    shadowSprite.y = player.body.y + player.offsetY + 2;
-    shadowSpriteLighter.y = player.body.y + player.offsetY + 6;
-
+    
     platforms.forEach(function(sprite) {
 	
 	sprite.body.velocity.x = lerp(sprite.body.velocity.x, 0, 0.1);
@@ -612,7 +608,8 @@ function update() {
     } else {
 	redDot.alpha = lerp(redDot.alpha, 0.0, 0.3);
     }
-    
+    updatePlayerLayerCoordinates();
+    updatePlayerLayerAngles();
     currentBattery -= docking ? 0 : (idleRotation ? 0.025 : 0.075);
 
     for (var i = 0; i < hearts.length ; i++) {
@@ -647,7 +644,7 @@ function update() {
 	dirtGlow.alpha = 0.0;
     }
     dirtMeter.frame = Math.min(Math.max(0, Math.floor(dirtCollected/5.0) -1), 19);
-    dirtCounterText.setText(pad(totalDirtCleaned, 4));
+    dirtCounterText.setText(pad(totalDirtCleaned + dirtCollected/5, 4));
 }
 
 function collectDirt(player, dirt) {
@@ -671,7 +668,6 @@ function goToDock(player, dock){
 	docking = true;
 	player.body.velocity.x = 0;
 	player.body.velocity.y = 0;
-	//idleRotation = true;
 	dockingState = ARRIVING_AT_DOCK;
 	if (vacMove.isPlaying){
 	    vacMove.stop();
@@ -766,6 +762,17 @@ function startMovement() {
     }
 }
 
+function updatePlayerLayerCoordinates() {
+    yellowLight.x = redLight.x = shadowSpriteLighter.x = shadowSprite.x = player.body.x + player.offsetX;
+    yellowLight.y = redLight.y = player.body.y + player.offsetY;
+    shadowSprite.y = player.body.y + player.offsetY + 2;
+    shadowSpriteLighter.y = player.body.y + player.offsetY + 6;
+}
+
+function updatePlayerLayerAngles() {
+    yellowLight.angle = redLight.angle = shadowSpriteLighter.angle = shadowSprite.angle = player.angle;
+}
+
 function handleDocking() {
     if (dockingState == ARRIVING_AT_DOCK) {
 
@@ -800,7 +807,6 @@ function handleDocking() {
 	dockingTargetY = dockSprite.centerY - 60.0;
 	
 	player.angle = lerp(player.angle, -90.0, angleRate);
-	//console.log("leaving angle: "+player.angle);
 	if (Math.abs(player.angle + 90.0) < 1.0) {
 	    if (!animatingRestart && gameStarted) {
 		player.centerX = lerp(player.centerX, dockingTargetX, dockRate);
@@ -816,8 +822,4 @@ function handleDocking() {
 	    }
 	} 
     }
-    yellowLight.angle = player.angle;
-    yellowLight.x = player.x;
-    yellowLight.y = player.y;
-    
 }
