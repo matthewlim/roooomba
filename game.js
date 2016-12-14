@@ -51,6 +51,7 @@ function preload() {
 
 
 var player;
+var playerBody;
 var shadowSprite;
 var shadowSpriteLighter;
 var platforms;
@@ -99,6 +100,7 @@ var decodedDict = [];
 var hearts = [];
 var emitter;
 var dockSprite;
+var dockBody;
 var docking = true;
 
 var ARRIVING_AT_DOCK = 1;
@@ -242,24 +244,15 @@ function create() {
     couch.shadow_layer = couchShadow;
     couch.body.immovable = true;
 
-    plant3 = platforms.create(200, 400, 'potted_plant');
-    plant3.shadow_layer = plant3Shadow;
-    plant3.originalPosition = {x: 200, y:400};
-    
-    plant1 = platforms.create(600, 200, 'potted_plant');
-    plant1.shadow_layer = plant1Shadow;
-    plant1.originalPosition = {x: 600, y:200};
+    // PLANTS
+    plant3Body = makePlant(200, 400, plant3Shadow);
 
-    plant2 = platforms.create(750, 200, 'potted_plant');
-    plant2.shadow_layer = plant2Shadow;
-    plant2.originalPosition = {x: 750, y:200};
-    
+    plant1Body = makePlant(600, 200, plant1Shadow);
 
-    plant4 = platforms.create(800, 200, 'potted_plant');
-    plant4.shadow_layer = plant4Shadow;
-    plant4.originalPosition = {x: 800, y:200};
-    /*tv = platforms.create(200, 400, 'tv');
-      tv.shadow_layer = tvShadow;*/
+    plant2Body = makePlant(750, 200, plant2Shadow);
+
+    plant4Body = makePlant(800, 200, plant4Shadow);
+    
     coffeeTable = platforms.create(250, 400, 'coffee_table');
     coffeeTable.shadow_layer = coffeeTableShadow;
     coffeeTable.originalPosition = {x: 250, y:400};
@@ -279,12 +272,8 @@ function create() {
     dock.enableBody = true;
 
     dockBody = dock.create(game.world.width - 200, game.world.height - 152, 'speck');
-    
-    
     dockBody.anchor.setTo(0.5, 0.5);
     dockBody.immovable = true;
-
-    
     
     dockSprite = game.add.sprite(game.world.width - 200, game.world.height - 152, 'dock');
     dockSprite.anchor.setTo(0.5, 0.5);
@@ -303,6 +292,12 @@ function create() {
     shadowSpriteLighter = game.add.sprite(startX, startY, 'roombaShadow2');
     shadowSpriteLighter.anchor.setTo(0.5, 0.5);
     shadowSpriteLighter.alpha = .15;
+
+    playerBody = game.add.sprite(startX, startY, 'shade')
+    playerBody.scale.setTo(40, 40);
+    playerBody.angle = -90;
+    playerBody.alpha = 0;
+    playerBody.anchor = new Phaser.Point(0.5, 0.5);
     
     player = game.add.sprite(startX, startY, 'roomba');
     player.angle = -90;
@@ -318,12 +313,12 @@ function create() {
     
     
     //  We need to enable physics on the player
-    game.physics.arcade.enable(player);
+    game.physics.arcade.enable(playerBody);
 
-    player.body.bounce.y = 0.2;
-    player.body.gravity.y = 0;
+    playerBody.body.bounce.y = 0.2;
+    playerBody.body.gravity.y = 0;
 
-    player.body.collideWorldBounds = true;
+    playerBody.body.collideWorldBounds = true;
 
     for (var i = 0; i < 8; i++) {
 
@@ -403,12 +398,12 @@ function update() {
 
     roombaSpeed = dirtCollected < 100.0 ? (dirtCollected < 75.0 ? 200 : 150) : 100;
     //  Collide the player and the dirts with the platforms
-    game.physics.arcade.collide(player, platforms);
+    game.physics.arcade.collide(playerBody, platforms);
     game.physics.arcade.collide(dirts, platforms);
     game.physics.arcade.collide(platforms, platforms);
     //  Checks to see if the player overlaps with any of the dirts, if he does call the collectDirt function
-    game.physics.arcade.overlap(player, dirts, collectDirt, null, this);
-    game.physics.arcade.overlap(player, dockBody, goToDock, null, this);
+    game.physics.arcade.overlap(playerBody, dirts, collectDirt, null, this);
+    game.physics.arcade.overlap(playerBody, dockBody, goToDock, null, this);
     //  Reset the players velocity (movement)
 
     if (currentBattery > 0.0) {
@@ -445,13 +440,13 @@ function update() {
 	
 	
 	if (idleRotation && !docking) {
-	    player.angle = (player.angle + (rotationDirection == CW ? 2 : -2)) % 360;
-	    deathAngle = rotationDirection == CW ? (player.angle + 30) % 360 : (player.angle - 30) % 360;
+	    playerBody.angle = (playerBody.angle + (rotationDirection == CW ? 2 : -2)) % 360;
+	    deathAngle = rotationDirection == CW ? (playerBody.angle + 30) % 360 : (playerBody.angle - 30) % 360;
 	    
 	} else if (!idleRotation && !docking){
 	    
-	    player.body.velocity.y = lerp(player.body.velocity.y, Math.sin(player.rotation)*roombaSpeed, 0.1);
-	    player.body.velocity.x = lerp(player.body.velocity.x, Math.cos(player.rotation)*roombaSpeed, 0.1);
+	    playerBody.body.velocity.y = lerp(playerBody.body.velocity.y, Math.sin(playerBody.rotation)*roombaSpeed, 0.1);
+	    playerBody.body.velocity.x = lerp(playerBody.body.velocity.x, Math.cos(playerBody.rotation)*roombaSpeed, 0.1);
 	}
 
 	if (cursors.left.isDown && idleRotation) {
@@ -516,8 +511,8 @@ function update() {
 	}
 	
 	yellowLight.alpha = 0.0;
-	player.body.velocity.x = lerp(player.body.velocity.x, 0, 0.1);
-	player.body.velocity.y = lerp(player.body.velocity.y, 0, 0.1);
+	playerBody.body.velocity.x = lerp(playerBody.body.velocity.x, 0, 0.1);
+	playerBody.body.velocity.y = lerp(playerBody.body.velocity.y, 0, 0.1);
 	redLight.alpha = lerp(redLight.alpha, 0.8, 0.1);
 	if (vacOn.isPlaying) {
 	    vacOn.stop();
@@ -536,15 +531,15 @@ function update() {
 	    vacOff.play();
 	}
 	if (idleRotation) {
-	    player.angle = lerp(player.angle, deathAngle, 0.025);
+	    playerBody.angle = lerp(playerBody.angle, deathAngle, 0.025);
 	}
 	
     }
     
 
-    if (!player.body.touching.none && !didCollectDirt && !docking) {
-	player.body.velocity.x = 0;
-	player.body.velocity.y = 0;
+    if (!playerBody.body.touching.none && !didCollectDirt && !docking) {
+	playerBody.body.velocity.x = 0;
+	playerBody.body.velocity.y = 0;
 	recoilTicker = RECOIL_MAX;
 	if (soundsReady) {
 	    bounceSound.play();
@@ -560,8 +555,8 @@ function update() {
 	if (!vacIdle.isPlaying) {
 	    vacIdle.play();
 	}
-	emitter.x = player.x + Math.cos(player.rotation)*player.width/2;
-	emitter.y = player.y + Math.sin(player.rotation)*player.width/2;
+	emitter.x = playerBody.x + Math.cos(playerBody.rotation)*playerBody.width/2;
+	emitter.y = playerBody.y + Math.sin(playerBody.rotation)*playerBody.width/2;
 	emitter.start(true, 500, null, 15);
     }
     
@@ -570,15 +565,16 @@ function update() {
     }
     var recoilSpeed = 20.0;
     if (recoilTicker > 0) {
+	playerBody.scale.setTo((1.0 - (recoilTicker/RECOIL_MAX)*0.1)*40, 40);
 	player.scale.setTo(1.0 - (recoilTicker/RECOIL_MAX)*0.1, 1.0);
 	shadowSprite.scale.setTo(1.0 - (recoilTicker/RECOIL_MAX)*0.1, 1.0);
 	shadowSpriteLighter.scale.setTo(1.0 - (recoilTicker/RECOIL_MAX)*0.1, 1.0);
 	recoilTicker -= 1.0;
-	player.body.velocity.y = lerp(-Math.sin(player.rotation)*recoilSpeed, 0.0, 0.2);
-	player.body.velocity.x = lerp(-Math.cos(player.rotation)*recoilSpeed, 0.0, 0.2);
+	playerBody.body.velocity.y = lerp(-Math.sin(playerBody.rotation)*recoilSpeed, 0.0, 0.2);
+	playerBody.body.velocity.x = lerp(-Math.cos(playerBody.rotation)*recoilSpeed, 0.0, 0.2);
 	if (recoilTicker <= 0.0) {
 	    idleRotation = true;
-	    player.body.velocity.setTo(0,0);
+	    playerBody.body.velocity.setTo(0,0);
 	}
     }
     
@@ -592,6 +588,11 @@ function update() {
 	    delta = sprite.shadow_layer.shadow_delta_y == undefined ? 4 : sprite.shadow_layer.shadow_delta_y;
 	    sprite.shadow_layer.y = sprite.y + delta;
 	}
+	if (sprite.decoration_layer != undefined){
+	    sprite.decoration_layer.x = sprite.centerX - sprite.decoration_layer.width/2;
+	    sprite.decoration_layer.y = sprite.centerY - sprite.decoration_layer.height/2;
+	}
+	    
     });
 
     dockRate = 0.04;
@@ -645,6 +646,19 @@ function update() {
     }
     dirtMeter.frame = Math.min(Math.max(0, Math.floor(dirtCollected/5.0) -1), 19);
     dirtCounterText.setText(pad(totalDirtCleaned + dirtCollected/5, 4));
+}
+
+function makePlant(xPos, yPos, shadowLayer) {
+    plantBody = platforms.create(xPos, yPos, 'shade');
+    plantBody.scale.setTo(40, 40);
+    plantBody.alpha = 0;
+    plant = game.add.sprite(xPos, yPos, 'potted_plant');
+    plantBody.originalPosition = {x: xPos, y: yPos};
+    plantBody.shadow_layer = shadowLayer;
+    plantBody.decoration_layer = plant;
+
+    return plantBody;
+
 }
 
 function collectDirt(player, dirt) {
@@ -763,14 +777,14 @@ function startMovement() {
 }
 
 function updatePlayerLayerCoordinates() {
-    yellowLight.x = redLight.x = shadowSpriteLighter.x = shadowSprite.x = player.body.x + player.offsetX;
-    yellowLight.y = redLight.y = player.body.y + player.offsetY;
-    shadowSprite.y = player.body.y + player.offsetY + 2;
-    shadowSpriteLighter.y = player.body.y + player.offsetY + 6;
+    player.x = yellowLight.x = redLight.x = shadowSpriteLighter.x = shadowSprite.x = playerBody.body.x + playerBody.offsetX;
+    player.y = yellowLight.y = redLight.y = playerBody.body.y + playerBody.offsetY;
+    shadowSprite.y = playerBody.body.y + playerBody.offsetY + 2;
+    shadowSpriteLighter.y = playerBody.body.y + playerBody.offsetY + 6;
 }
 
 function updatePlayerLayerAngles() {
-    yellowLight.angle = redLight.angle = shadowSpriteLighter.angle = shadowSprite.angle = player.angle;
+    yellowLight.angle = redLight.angle = shadowSpriteLighter.angle = shadowSprite.angle = player.angle = playerBody.angle;
 }
 
 function handleDocking() {
@@ -785,14 +799,14 @@ function handleDocking() {
 	if (vacAccel.isPlaying){
 	    vacAccel.stop();
 	}
-	player.angle = lerp(player.angle, 90.0, angleRate);
-	player.centerX = lerp(player.centerX, dockingTargetX, dockRate);
-	player.centerY = lerp(player.centerY, dockingTargetY, dockRate);
+	playerBody.angle = lerp(playerBody.angle, 90.0, angleRate);
+	playerBody.centerX = lerp(playerBody.centerX, dockingTargetX, dockRate);
+	playerBody.centerY = lerp(playerBody.centerY, dockingTargetY, dockRate);
 	
 
-	if (Math.abs(player.centerX - dockingTargetX) <= 0.05 &&
-	    Math.abs(player.centerY - dockingTargetY) <= 0.05 &&
-	    Math.abs(player.angle - 90.0) < 0.05) {
+	if (Math.abs(playerBody.centerX - dockingTargetX) <= 0.05 &&
+	    Math.abs(playerBody.centerY - dockingTargetY) <= 0.05 &&
+	    Math.abs(playerBody.angle - 90.0) < 0.05) {
 	    rotationDirection = CW;
 	    dockingState = LEAVING_DOCK;
 
@@ -806,17 +820,17 @@ function handleDocking() {
 	dockingTargetX = dockSprite.centerX;
 	dockingTargetY = dockSprite.centerY - 60.0;
 	
-	player.angle = lerp(player.angle, -90.0, angleRate);
-	if (Math.abs(player.angle + 90.0) < 1.0) {
+	playerBody.angle = lerp(playerBody.angle, -90.0, angleRate);
+	if (Math.abs(playerBody.angle + 90.0) < 1.0) {
 	    if (!animatingRestart && gameStarted) {
-		player.centerX = lerp(player.centerX, dockingTargetX, dockRate);
-		player.centerY = lerp(player.centerY, dockingTargetY, dockRate);
-		if (dockSprite.centerY - player.centerY > 59.0) {
+		playerBody.centerX = lerp(playerBody.centerX, dockingTargetX, dockRate);
+		playerBody.centerY = lerp(playerBody.centerY, dockingTargetY, dockRate);
+		if (dockSprite.centerY - playerBody.centerY > 59.0) {
 		    dockingState = NOT_DOCKING;
 		    docking = false;
 		    idleRotation = true;
-		    player.body.velocity.x = 0;
-		    player.body.velocity.y = 0;
+		    playerBody.body.velocity.x = 0;
+		    playerBody.body.velocity.y = 0;
 		    dockTimeout = 100.0;
 		}
 	    }
